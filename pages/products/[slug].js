@@ -1,37 +1,55 @@
+// pages/blogSlug/[slug].js or wherever this is used
+
 export async function getStaticPaths() {
-  const productSlugs = await fetch(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/product/slugs`,
-    {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/product/slugs`, {
       method: "GET",
+    });
+
+    if (!res.ok) {
+      console.error("Failed to fetch product slugs:", res.status);
+      return { paths: [], fallback: "blocking" }; // fallback safe
     }
-  );
-  const productPaths = await productSlugs.json();
 
-  if (!productSlugs.ok) {
-    throw new Error("Failed to fetch product slugs");
+    const productPaths = await res.json();
+
+    return {
+      paths: productPaths.map((slug) => ({ params: { slug } })),
+      fallback: "blocking",
+    };
+  } catch (err) {
+    console.error("Error in getStaticPaths:", err.message);
+    return { paths: [], fallback: "blocking" };
   }
-
-  return {
-    paths: productPaths.map((slug) => ({ params: { slug } })),
-    fallback: "blocking",
-  };
 }
+
 export async function getStaticProps({ params }) {
   const { slug } = params;
 
-  const productData = await fetch(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/product/${slug}`,
-    {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/product/${slug}`, {
       method: "GET",
+    });
+
+    if (!res.ok) {
+      console.error("Failed to fetch product data for:", slug, res.status);
+      return { notFound: true }; // fallback to 404 page
     }
-  );
-  const pD = await productData.json();
-  return {
-    props: {
-      product: pD,
-    },
-  };
+
+    const product = await res.json();
+
+    return {
+      props: {
+        product,
+      },
+      revalidate: 60, // optional: ISR
+    };
+  } catch (err) {
+    console.error("Error in getStaticProps:", err.message);
+    return { notFound: true };
+  }
 }
+
 
 // actual component for the page
 import { NextSeo } from "next-seo";

@@ -300,6 +300,7 @@ function Shop({ shopItems }) {
 }
 
 export async function getServerSideProps() {
+  try{
   const shopRes = await fetch(
     `${process.env.NEXT_PUBLIC_BACKEND_URL}/picture/getSliders?location=shop`
   );
@@ -309,7 +310,14 @@ export async function getServerSideProps() {
     props: {
       shopItems,
     },
-  };
+  }
+}catch (error) {
+    return{
+      props: {
+        shopItems: [],
+      },
+  }
+}
 }
 
 export default Shop;

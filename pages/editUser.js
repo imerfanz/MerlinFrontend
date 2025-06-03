@@ -1,4 +1,5 @@
 import st from "@/styles/editUser.module.css";
+import { IBM } from "@/config/fonts";
 
 export default function EditUser(props) {
   return (

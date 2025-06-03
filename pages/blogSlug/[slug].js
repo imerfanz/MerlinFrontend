@@ -1,36 +1,41 @@
 export async function getStaticPaths() {
-  const blogSlugs = await fetch(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/blogs/slugs`,
-    {
+  try {
+    const blogSlugsRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/blogs/slugs`, {
       method: "GET",
+    });
+
+    if (!blogSlugsRes.ok) {
+      console.error("Failed to fetch blog slugs:", blogSlugsRes.status);
+      return {
+        paths: [],
+        fallback: "blocking",
+      };
     }
-  );
-  const blogPaths = await blogSlugs.json();
 
-  if (!blogSlugs.ok) {
-    throw new Error("Failed to fetch product slugs");
+    const blogPaths = await blogSlugsRes.json();
+
+    return {
+      paths: blogPaths.map((slug) => ({ params: { slug } })),
+      fallback: "blocking",
+    };
+  } catch (error) {
+    console.error("Error in getStaticPaths:", error.message);
+    return {
+      paths: [],
+      fallback: "blocking",
+    };
   }
-
-  return {
-    paths: blogPaths.map((slug) => ({ params: { slug } })),
-    fallback: "blocking",
-  };
 }
+
 
 export async function getStaticProps({ params }) {
   try {
     const { slug } = params;
 
     // Fetch the blog data
-    const blogResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL}/blogs/${slug}`
-    );
+    const blogResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/blogs/${slug}`);
 
-    if (!blogResponse.ok) {
-      return { notFound: true }; // Return 404 if blog not found
-    }
-
-    const blogData = await blogResponse.json();
+    const blogData = blogResponse.ok ? await blogResponse.json() : null;
 
     // Fetch popular products
     const resPopulars = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/product/populars`);
@@ -46,18 +51,31 @@ export async function getStaticProps({ params }) {
     const productResults = await Promise.all(productRequests);
     const products = productResults.filter((p) => p !== null);
 
+    // If blog was not found, return a 404 page
+    if (!blogData) {
+      return { notFound: true };
+    }
+
     return {
       props: {
         blog: blogData,
         products: products,
       },
-      revalidate: 60, // Regenerate page every 60 seconds for fresh data
+      revalidate: 60,
     };
   } catch (error) {
-    console.error("Error fetching blog data:", error);
-    return { notFound: true };
+    console.error("Error in getStaticProps:", error.message);
+
+    return {
+      props: {
+        blog: null,
+        products: [],
+      },
+      revalidate: 60,
+    };
   }
 }
+
 
 
 import { IBM, noto, rubik } from "@/config/fonts";
